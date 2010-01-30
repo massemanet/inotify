@@ -1,0 +1,91 @@
+
+Introduction
+------------
+Inofity is on erlang port for the Linux inotify API allowing one to monitor
+changes to files and directory in the filesystem.
+
+Installation
+------------
+1. Change to the src directory
+2. Execute make
+3. Execute make test. When you run make test it runs inotify:test() and you
+should see output similar to
+
+ $ make test
+ erl -noshell -eval "inotify:test(), erlang:halt()."
+ Simplistic test/example
+ Start... Open the port and receive a file descriptor... F = 3
+ list..L = [3]
+ Watch for any changes in a Directory... W = 1
+ launch listener....
+ start playing with the file...
+ attempt to create file "../test/file"
+ listener got: {event,1,[create],0,[102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]}
+ listener got: {event,1,[create],0,[102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]}
+ write a message to file
+ listener got: {event,1,[modify],0,[102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]}
+ close the file
+ listener got: {event,1,
+                     [close_write],
+                     0,
+                     [102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]}
+ delete file "../test/file"
+ listener got: {event,1,[delete],0,[102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]}
+ end playing with file
+ stop the listener...
+ stop inotify controller...
+ test is now concluded
+
+The test creates a file in the test directory, writes to it and then deletes it.
+
+4. Before installing alter the line
+
+  -define(PORTPROG, "./inotify").
+
+  in inotify.erl to reflect where the program will be installed.
+
+5. re-run make
+
+6. copy the copiled files to the desired location
+
+
+Using Intoify
+-------------
+For an example on how to use inotify take a look at the function test/0 in
+intoify.erl.
+
+The listener process gets a message of the form
+   {event, WatchDescriptor, EventList, Cookie, Name}
+where
+   WatchDescriptor is the watch descriptor which caused the event
+   EventList is one or more event which is/are the reason for the message these 
+     include,
+       access, attrib, close_write, close_nowrite, create, delete, delete_self,
+       modify, move_self, moved_from, moved_to, open
+   Cookie
+   Name is the filesystem name relative to the base which caused the event. It
+     the example test above the list [102,105,108,101,0,0,0,0,0,0,0,0,0,0,0,0]
+     is the string "file" zero padded which is the file referred to by the
+     event relative to the test directory with the attached inotify watch.
+
+
+License
+-------
+In short, you can do anything you want with the code including using it as part
+of you plan for world domination (if your successful can I have one of the nicer
+countries please). No responsiblity it taken for the fitness of the any purpose,
+etc, etc. The only thing I ask is that if you find a bug and fix send me the
+patch. Likewise, feature suggestions and patches are welcome.
+
+TODO
+----
+* Write a makefile that works
+* add support for multiple controller functions
+* Write some documentation!
+
+
+
+Release History
+---------------
+20090221 release 0.2 bug fix
+20080929 initial release version 0.1
