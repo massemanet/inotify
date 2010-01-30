@@ -6,10 +6,10 @@
 
 -module(inoteefy).
 -author('Mats Cronqvist').
--export([rec_info/1,init/1,handle_cast/2,handle_info/2]).
+-export([init/1,handle_cast/2,handle_info/2]).
 
 -export([start/0,stop/0,
-         watch_file/2,unwatch_file/1]).
+         watch/2,unwatch/1]).
 
 -record(ld,{port}).
 
@@ -20,33 +20,38 @@
 % the api
 
 start() ->
-  gen_serv:start(?MODULE).
+  gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
 stop() -> 
-  gen_serv:stop(?MODULE).
+  gen_server:cast(?MODULE,stop).
 
-watch_file(File,Callback) -> 
+watch(File,Callback) -> 
   gen_server:cast(?MODULE,{watch,{File,Callback}}).
 
-unwatch_file(File) -> 
+unwatch(File) -> 
   gen_server:cast(?MODULE,{unwatch,File}).
 
-%% gen_serv callbacks
-rec_info(ld) ->
-  record_info(fields,ld).
+%% gen_server callbacks
 
 init(_) ->
-  gen_serv:unlink(),
-  #ld{port=open_port()}.
+  {ok,#ld{port=open_port()}}.
 
 handle_info({Port,{data,Msg}},LD = #ld{port=Port}) ->
   maybe_call_back(binary_to_term(Msg)),
-  LD.
+  {noreply,LD};
+handle_info(Msg,LD) ->
+  ?log({unknown_message,Msg}),
+  {noreply,LD}.
 
+handle_cast(stop,LD) ->
+  {stop,normal,LD};
 handle_cast({watch,Watch},LD) ->
-  watch(Watch,LD);
+  {noreply,do_watch(Watch,LD)};
 handle_cast({unwatch,Unwatch},LD) ->
-  unwatch(Unwatch,LD).
+  {noreply,do_unwatch(Unwatch,LD)};
+handle_cast(Msg,LD) ->
+  ?log({unknown_message,Msg}),
+  {noreply,LD}.
 
 %% implementation details
 open_port() ->
@@ -78,7 +83,7 @@ maybe_call_back({event,WD,Mask,Cookie,Name}) ->
       end
   end.
 
-watch({File,CB},LD) ->
+do_watch({File,CB},LD) ->
   case filelib:is_regular(File) of
     false->
       ?log([{no_such_file,File}]),LD;
@@ -93,9 +98,11 @@ watch({File,CB},LD) ->
       end
   end.
 
-unwatch(File,LD) ->
+do_unwatch(File,LD) ->
   case get({file,File}) of
-    undefined   -> ?log([{not_watching,File}]),LD;
+    undefined   ->
+      ?log([{not_watching,File}]),
+      LD;
     {FD,WD,_CB} -> 
       try   talk_to_port(LD#ld.port,{remove,FD,WD}),
             talk_to_port(LD#ld.port,{close,FD})
