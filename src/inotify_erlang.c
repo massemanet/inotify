@@ -137,7 +137,6 @@ void note_encode_mask(ei_x_buff *outp, ulong mask) {
 };
 
 int note_decode_mask_atom(const char *atom, ulong *maskout) {
-  *maskout = 0;
   if (!strcmp("all", atom)) {
     *maskout |= IN_ALL_EVENTS;
   } else if (!strcmp("access", atom)) {
@@ -193,12 +192,23 @@ int note_decode_mask(char *buf, int *index, ulong *maskout) {
     if (note_decode_mask_atom(mstr, maskout) < 0) 
       return(-1);
   } else if (termtype == ERL_LIST_EXT) {
-    if (ei_decode_list_header(buf, index, &arity) < 0)
+    if (ei_decode_list_header(buf, index, &arity) < 0) {
       return(-1);
-    for(count = arity; count <= arity; count++) {
+    }
 
-      if (note_decode_mask_atom(mstr, maskout) < 0)
-	return(-1);
+    if (arity == 0) {    /* empty list */
+      return(-1);
+    }
+
+    for(count = 0; count < arity; count++) {
+      ei_get_type(buf, index, &termtype, &size);
+      if (termtype == ERL_ATOM_EXT) {
+        if (ei_decode_atom(buf, index, mstr) < 0)
+          return(-1);
+        
+        if (note_decode_mask_atom(mstr, maskout) < 0)
+          return(-1);
+      }
     }
   } else {
     /* another type which is not of interest */
