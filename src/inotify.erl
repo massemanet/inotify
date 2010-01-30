@@ -3,13 +3,11 @@
 -export([test_start/0, test_end/2, test/0]).
 -export([open/0, controlling_process/1, add/3, remove/2, list/0, close/1]).
 
--define(PORTPROG, "./inotify").
-
 start(Controller) when is_pid(Controller) ->
     spawn(fun() ->
 		  register(?MODULE, self()),
 		  process_flag(trap_exit, true),
-		  Port = open_port({spawn, ?PORTPROG},
+		  Port = open_port({spawn, executable()},
 				   [{packet, 2}, binary, exit_status]),
 		  loop(Port, Controller)
 		  %% The following is only used for development and testing
@@ -22,7 +20,6 @@ start(Controller) when is_pid(Controller) ->
 
 stop() ->
     ?MODULE ! stop.
-
 
 test_start() ->
     io:format("open~n"),
@@ -41,8 +38,9 @@ test_end(F,W) ->
 
 test() ->
     %% this is the test file
-    Dir = "../test",
+    Dir = "/tmp/inotify/test",
     File = "file",
+    filelib:ensure_dir(filename:join(Dir,File)),
     io:format("Simplistic test/example~n"),
     io:format("Start... "),
     start(self()),
@@ -172,3 +170,38 @@ loop(Port, Controller) ->
 	_Other ->
 	    loop(Port, Controller)
     end.
+
+executable() ->
+  Parts = [[filename:dirname(code:which(?MODULE)),"..",c_src],
+           [code:priv_dir(inotify),bin]],
+  try E = take_first(fun to_file/1, Parts),
+      io:fwrite("using: ~p~n",[E]),
+      E
+  catch _:_ -> exit({inotify_binary_not_found,Parts})
+  end.
+
+to_file(Parts) ->
+  true = filelib:is_regular(F=filename:join(Parts++[inotify])),
+  F.
+
+take_first(_,[]) -> exit({take_first,nothing_worked});
+take_first(F,[H|T]) ->
+  try F(H)
+  catch _:_ -> take_first(F,T)
+  end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
