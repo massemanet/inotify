@@ -260,14 +260,22 @@ int note_read_send(int len, char *buf) {
     if (ei_x_new_with_version(&result) ||
 	ei_x_encode_tuple_header(&result, 5)) return(-1);
     
-    fprintf(stderr, "inotify_erlang:note_read  len: %d idx: %d event %d %x %x %s\r\n",
+    /*
+    fprintf(stderr,
+            "inotify_erlang:note_read  len: %d idx: %d event %d %x %x %s\r\n",
 	    len, idx, event->wd, event->mask, event->cookie, event->name);
+    */
+
     ei_x_encode_atom(&result, "event");                         /* element 1 */
     ei_x_encode_ulong(&result, event->wd);                      /* element 2 */
     note_encode_mask(&result, event->mask);                     /* element 3 */
     ei_x_encode_ulong(&result, event->cookie);                  /* element 4 */
-    ei_x_encode_string(&result, event->name);                   /* element 5 */
-    
+    if ( 0 < event->len ) {
+      ei_x_encode_string(&result, event->name);                 /* element 5 */
+    }else{
+      ei_x_encode_string(&result, "");
+    }
+
     write_cmd(&result);
     ei_x_free(&result);
     idx += EVENT_SIZE + event->len;
