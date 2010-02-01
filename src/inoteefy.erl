@@ -26,6 +26,7 @@ stop() ->
   gen_server:cast(?MODULE,stop).
 
 watch(File,Callback) -> 
+  start(),
   gen_server:cast(?MODULE,{watch,{File,Callback}}).
 
 unwatch(File) -> 
@@ -84,18 +85,13 @@ maybe_call_back({event,WD,Mask,Cookie,Name}) ->
   end.
 
 do_watch({File,CB},LD) ->
-  case filelib:is_regular(File) of
-    false->
-      ?log([{no_such_file,File}]),LD;
-    true -> 
-      try {ok,FD} = talk_to_port(LD#ld.port,{open}),
-          {ok,WD} = talk_to_port(LD#ld.port,{add, FD, File, all}),
-          put({file,File},{FD,WD,CB}),
-          put({wd,WD},{File,FD,CB}),
-          LD
-      catch C:R -> 
-          ?log([{error_watching_file,File},{C,R}]),LD
-      end
+  try {ok,FD} = talk_to_port(LD#ld.port,{open}),
+      {ok,WD} = talk_to_port(LD#ld.port,{add, FD, File, all}),
+      put({file,File},{FD,WD,CB}),
+      put({wd,WD},{File,FD,CB}),
+      LD
+  catch C:R -> 
+      ?log([{error_watching_file,File},{C,R}]),LD
   end.
 
 do_unwatch(File,LD) ->
@@ -116,8 +112,8 @@ do_unwatch(File,LD) ->
 talk_to_port(Port,Msg) ->
   try
     erlang:port_command(Port, term_to_binary(Msg)),
-    receive {Port, {data, Data}} -> binary_to_term(Data)
-    after 1000                   -> throw(fd_open_timeout)
+    receive {Port, {data, D = <<131,104,2,_/binary>>}} -> binary_to_term(D)
+    after 1000                   -> throw(talk_to_port_timeout)
     end
   catch _:R -> throw({talking_to_port_failed,{R,Port,Msg}})
   end.

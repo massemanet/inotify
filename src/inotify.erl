@@ -32,9 +32,9 @@ test_start() ->
 
 test_end(F,W) ->
     io:format("remove~n"),
-    ok = remove(F,W),
+    {ok,W} = remove(F,W),
     io:format("close~n"),
-    ok = close(F).
+    {ok,F} = close(F).
 
 test() ->
     %% this is the test file

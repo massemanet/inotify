@@ -256,7 +256,7 @@ int note_read_send(int len, char *buf) {
     event = (struct inotify_event *) &buf[idx];
     
     /* encoding msg */
-    /* Prepare the output buffer that will hold {event, Wd, Mask, Cookie, Name} */
+    /* Output buffer that will hold {event, Wd, Mask, Cookie, Name} */
     if (ei_x_new_with_version(&result) ||
 	ei_x_encode_tuple_header(&result, 5)) return(-1);
     
@@ -326,7 +326,7 @@ int note_list(note_t *note, char *buf, int *index) {
   note_entry_t *cur;
   ei_x_buff result;
 
-  /* Prepare the output buffer that will hold {ok, Result} or {error, Reason} */
+  /* Output buffer that will hold {ok, Result} or {error, Reason} */
   if (ei_x_new_with_version(&result) ||
       ei_x_encode_tuple_header(&result, 2)) return(-1);
   ei_x_encode_atom(&result, "ok");
@@ -353,7 +353,7 @@ int note_open(note_t *note, char *buf, int *count) {
   note_entry_t *newent;
   ei_x_buff result;
 
-  /* Prepare the output buffer that will hold {ok, Result} or {error, Reason} */
+  /* Output buffer that will hold {ok, Result} or {error, Reason} */
   if (ei_x_new_with_version(&result) ||
       ei_x_encode_tuple_header(&result, 2)) return(-1);
 
@@ -402,7 +402,7 @@ int note_close(note_t *note, char *buf, int *count) {
       nextp = (*curpp)->next;
       free(*curpp);
       (*curpp) = nextp;
-      /* Prepare the output buffer that will hold {ok, Result} or {error, Reason} */
+      /* Output buffer that will hold {ok, Result} or {error, Reason} */
       if (ei_x_new_with_version(&result) ||
 	  ei_x_encode_tuple_header(&result, 2)) return(-1);
       if (ei_x_encode_atom(&result, "ok") ||
@@ -439,7 +439,7 @@ int note_add(note_t *note, char *buf, int *index) {
   char pathname[512];
   ei_x_buff result;
 
-  /* Prepare the output buffer that will hold {ok, Result} or {error, Reason} */
+  /* Output buffer that will hold {ok, Result} or {error, Reason} */
   if (ei_x_new_with_version(&result) ||
       ei_x_encode_tuple_header(&result, 2)) return(-1);
 
@@ -448,7 +448,8 @@ int note_add(note_t *note, char *buf, int *index) {
 
   mask = 0;
   if (note_decode_mask(buf, index, &mask) < 0) {
-    if (ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "bad_mask"))
+    if (ei_x_encode_atom(&result, "error") ||
+        ei_x_encode_atom(&result, "bad_mask"))
       return(-1);
     write_cmd(&result);
     ei_x_free(&result);
@@ -459,7 +460,8 @@ int note_add(note_t *note, char *buf, int *index) {
     return note_send_errno();
   }
 
-  if (ei_x_encode_atom(&result, "ok") || ei_x_encode_ulong(&result, wd)) return(-1);
+  if (ei_x_encode_atom(&result, "ok") ||
+      ei_x_encode_ulong(&result, wd)) return(-1);
   write_cmd(&result);
   ei_x_free(&result);
   return(0);
@@ -470,7 +472,7 @@ int note_add(note_t *note, char *buf, int *index) {
  *    {ulong fd, ulong wd}
  *
  * returns
- *   ok
+ *   {ok,wd}
  *   {error, errno}
  */
 int note_remove(note_t *note, char *buf, int *index) {
@@ -482,12 +484,14 @@ int note_remove(note_t *note, char *buf, int *index) {
 
 
   if (inotify_rm_watch(fd, wd) < 0) {
-  /* Prepare the output buffer that will hold {error, Reason} */
+  /* Output buffer that will hold {error, Reason} or {ok, Wd}*/
     return note_send_errno();
   }
 
   if (ei_x_new_with_version(&result) ||
-      ei_x_encode_atom(&result, "ok")) return(-1);
+      ei_x_encode_tuple_header(&result, 2)) return(-1);
+  if (ei_x_encode_atom(&result, "ok") ||
+      ei_x_encode_ulong(&result, wd)) return(-1);
   write_cmd(&result);
   ei_x_free(&result);
   return(0);

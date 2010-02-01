@@ -1,0 +1,13 @@
+2010-02-01  Mats Cronqvist  <masse@kreditor.se>
+
+	* c_src/inotify_erlang.c (note_remove):
+	driver will always return either a 2-tuple (synchronously) or a
+	5-tuple (asynchronously)
+
+	* src/inotify.erl (test_start):
+	see above
+
+	* src/inoteefy.erl (talk_to_port):
+	fixed race condition between synchronous and asynchronous events
+	
+
