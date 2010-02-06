@@ -1,8 +1,8 @@
-AC_INIT(erlang binding to inotify, 0.22, mats.cronqvist()gmail.com, inotify)
+AC_INIT(erlang binding to inotify, 0.30, mats.cronqvist()gmail.com, inotify)
 
 dnl Require autoconf version >=2.59c. first one with erlang macros
 AC_PREREQ(2.59c)
-AC_COPYRIGHT(Copyright (C) 2010 Jeff Miller)
+AC_COPYRIGHT(Copyright (C) 2010 Jeff Miller et al)
 dnl AC_REVISION($Id$)
 
 dnl Require automake version >=1.9.5.
