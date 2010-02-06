@@ -1,7 +1,7 @@
 
 Introduction
 ------------
-Inofity is on erlang port for the Linux inotify API allowing one to monitor
+Inotify is on erlang port for the Linux inotify API allowing one to monitor
 changes to files and directory in the filesystem.
 
 Installation
@@ -89,8 +89,10 @@ ok
 
 Using inotify
 -------------
-For an example on how to use inotify take a look at the function test/0 in
-inotify.erl.
+This is the erlang program inotify.erl, not the underlying linux syscall.
+
+For an example on how to use inotify take a look at the function
+test/0 in inotify.erl.
 
 The listener process gets a message of the form
    {event, WatchDescriptor, EventList, Cookie, Name}
