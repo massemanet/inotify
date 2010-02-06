@@ -77,7 +77,10 @@ take_first(F,[H|T]) ->
 maybe_call_back({event,WD,Mask,Cookie,Name}) ->
   case get({wd,WD}) of
     undefined ->
-      ?log([{got_event_without_callback,WD}]);
+      case Mask of
+        [ignored] -> ok;
+        _ -> ?log([{got_event_without_callback,WD,Mask,Cookie,Name}])
+      end;
     {Filename,_FD,CB} ->
       try CB({Filename,Mask,Cookie,Name})
       catch C:R -> ?log([{callback_failed,Filename},{C,R}])
