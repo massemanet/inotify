@@ -6,12 +6,13 @@
 
 -module(inoteefy).
 -author('Mats Cronqvist').
--export([init/1,handle_cast/2,handle_info/2]).
+-export([init/1,terminate/2,handle_cast/2,handle_info/2]).
 
 -export([start/0,stop/0,
          watch/2,unwatch/1]).
 
--record(ld,{port}).
+-record(ld,{port
+            ,fd}).
 
 -define(log(T),
         error_logger:info_report(
@@ -35,7 +36,12 @@ unwatch(File) ->
 %% gen_server callbacks
 
 init(_) ->
-  {ok,#ld{port=open_port()}}.
+  Port =open_port(),
+  {ok,FD} = talk_to_port(Port,{open}),
+  {ok,#ld{port=Port,fd=FD}}.
+
+terminate(_,LD) ->
+  talk_to_port(LD#ld.port,{close,LD#ld.fd}).
 
 handle_info({Port,{data,Msg}},LD = #ld{port=Port}) ->
   maybe_call_back(binary_to_term(Msg)),
@@ -81,17 +87,16 @@ maybe_call_back({event,WD,Mask,Cookie,Name}) ->
         [ignored] -> ok;
         _ -> ?log([{got_event_without_callback,WD,Mask,Cookie,Name}])
       end;
-    {Filename,_FD,CB} ->
+    {Filename,CB} ->
       try CB({Filename,Mask,Cookie,Name})
       catch C:R -> ?log([{callback_failed,Filename},{C,R}])
       end
   end.
 
 do_watch({File,CB},LD) ->
-  try {ok,FD} = talk_to_port(LD#ld.port,{open}),
-      {ok,WD} = talk_to_port(LD#ld.port,{add, FD, File, all}),
-      put({file,File},{FD,WD,CB}),
-      put({wd,WD},{File,FD,CB}),
+  try {ok,WD} = talk_to_port(LD#ld.port,{add, LD#ld.fd, File, all}),
+      put({file,File},{WD,CB}),
+      put({wd,WD},{File,CB}),
       LD
   catch C:R -> 
       ?log([{error_watching_file,File},{C,R}]),LD
@@ -102,9 +107,8 @@ do_unwatch(File,LD) ->
     undefined   ->
       ?log([{not_watching,File}]),
       LD;
-    {FD,WD,_CB} -> 
-      try   talk_to_port(LD#ld.port,{remove,FD,WD}),
-            talk_to_port(LD#ld.port,{close,FD})
+    {WD,_CB} -> 
+      try talk_to_port(LD#ld.port,{remove,LD#ld.fd,WD})
       catch C:R -> ?log([{error_unwatching_file,File},{C,R}])
       end,
       erase({file,File}),
